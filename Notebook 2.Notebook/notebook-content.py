@@ -20,6 +20,10 @@
 # META   }
 # META }
 
+# MARKDOWN ********************
+
+# # Notebook 2: checking integration
+
 # CELL ********************
 
 #load the NYC Taxi dataset 
