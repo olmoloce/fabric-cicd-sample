@@ -22,23 +22,11 @@
 
 # CELL ********************
 
-#parameter section
-param_replace = 100
-
-# METADATA ********************
-
-# META {
-# META   "language": "python",
-# META   "language_group": "synapse_pyspark"
-# META }
-
-# CELL ********************
-
 #load the NYC Taxi dataset 
 nyc_df = spark.read.parquet("abfss://4aca0508-e966-40a7-a2a2-84861b281c83@onelake.dfs.fabric.microsoft.com/2201502c-735a-4855-8bfd-8e448f913c90/Files/NYC-Taxi-Green/")
 
 #display top 100
-display(nyc_df.limit(param_replace))
+display(nyc_df.limit(100))
 
 
 # METADATA ********************
