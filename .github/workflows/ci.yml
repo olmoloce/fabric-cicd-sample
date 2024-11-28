@@ -16,40 +16,35 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      # Step 1: Ensure the ACA environment has Git installed
-      - name: Install Git (if necessary)
-        run: |
-          if ! command -v git &> /dev/null; then
-            echo "Git not found. Installing..."
-            apt-get update && apt-get install -y git
-          fi
-          git --version
-
-      # Step 2: Check out the repository
+      # Step 1: Check out the repository
       - name: Check out the code
         uses: actions/checkout@v4
 
-      # Step 3: Identify modified folders
-      - name: Get modified folders
+      # Step 2: Obtain the modified folders list using GitHub's API
+      - name: Get modified folders from GitHub API
         id: modified_folders
         run: |
-          MODIFIED_FOLDERS=$(git diff --name-only origin/main...HEAD | cut -d'/' -f1 | sort | uniq)
+          MODIFIED_FOLDERS=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files | \
+            jq -r '.[].filename | split("/")[0]' | sort | uniq)
           echo "Modified folders detected:"
           echo "$MODIFIED_FOLDERS"
           echo "folders=$MODIFIED_FOLDERS" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
 
-      # Step 4: Authenticate with Azure using Managed Identity
+      # Step 3: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure
         run: |
           az login --identity
 
-      # Step 5: Upload repository to shared storage
+      # Step 4: Upload repository to shared storage
       - name: Upload repository to shared storage
         run: |
           azcopy copy "$GITHUB_WORKSPACE" "https://${{ env.STORAGE_ACCOUNT }}.blob.core.windows.net/$(uuidgen)" --recursive
 
-      # Step 6: Call the deployment API
+      # Step 5: Call the deployment API
       - name: Call Deployment API
         run: |
           curl -X POST "$FABRIC_DEPLOYMENT_HUB_URL/api/Deployments" \
