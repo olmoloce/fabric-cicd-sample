@@ -21,14 +21,22 @@ jobs:
         uses: actions/checkout@v4
 
       # Step 2: Obtain the modified folders list using GitHub's API
-      - name: Get modified folders from GitHub API
+      - name: Get modified folders
         id: modified_folders
         run: |
-          MODIFIED_FOLDERS=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files | \
-            jq -r '.[].filename | split("/")[0]' | sort | uniq)
-          echo "Modified folders detected:"
-          echo "$MODIFIED_FOLDERS"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Fetch modified folders for pull requests
+            echo "Running for pull request..."
+            RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files)
+            echo "GitHub API response: $RESPONSE"
+            MODIFIED_FOLDERS=$(echo "$RESPONSE" | jq -r '.[].filename | split("/")[0]' | sort | uniq)
+          else
+            # Fetch modified folders for push events
+            echo "Running for push event..."
+            MODIFIED_FOLDERS=$(git diff --name-only HEAD^ HEAD | cut -d'/' -f1 | sort | uniq)
+          fi
+      
+          echo "Modified folders detected: $MODIFIED_FOLDERS"
           echo "folders=$MODIFIED_FOLDERS" >> $GITHUB_ENV
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
