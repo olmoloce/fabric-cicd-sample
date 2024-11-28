@@ -33,25 +33,25 @@ jobs:
         shell: bash
 
       # Step 2: Identify modified folders
-      - name: Identify relevant folders
-        id: relevant_folders
-        run: |
-          if git rev-parse HEAD^ &> /dev/null; then
-            echo "Fetching modified files between HEAD and HEAD^..."
-            MODIFIED_FILES=$(git diff --name-only HEAD^ HEAD)
-          else
-            echo "No previous commit found. Fetching all files in HEAD..."
-            MODIFIED_FILES=$(git ls-tree --name-only -r HEAD)
-          fi
-          echo "Modified files detected:"
-          echo "$MODIFIED_FILES"
+      # - name: Identify relevant folders
+      #   id: relevant_folders
+      #   run: |
+      #     if git rev-parse HEAD^ &> /dev/null; then
+      #       echo "Fetching modified files between HEAD and HEAD^..."
+      #       MODIFIED_FILES=$(git diff --name-only HEAD^ HEAD)
+      #     else
+      #       echo "No previous commit found. Fetching all files in HEAD..."
+      #       MODIFIED_FILES=$(git ls-tree --name-only -r HEAD)
+      #     fi
+      #     echo "Modified files detected:"
+      #     echo "$MODIFIED_FILES"
           
-          # Filter files by extensions and extract folders
-          RELEVANT_FOLDERS=$(echo "$MODIFIED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
-          echo "Relevant folders detected:"
-          echo "$RELEVANT_FOLDERS"
-          echo "folders=$RELEVANT_FOLDERS" >> $GITHUB_ENV
-        shell: bash
+      #     # Filter files by extensions and extract folders
+      #     RELEVANT_FOLDERS=$(echo "$MODIFIED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
+      #     echo "Relevant folders detected:"
+      #     echo "$RELEVANT_FOLDERS"
+      #     echo "folders=$RELEVANT_FOLDERS" >> $GITHUB_ENV
+      #   shell: bash
 
       # Step 3: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure
@@ -84,6 +84,6 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{
               "workspaceIds": [${{ env.WORKSPACE_IDS }}],
-              "repoContainer": "'$container_name'",
-              "modifiedFolders": ["'$MODIFIED_FOLDERS'"]
+              "repoContainer": "8aff1b19-4d31-4586-8ff7-6b9aee2f5c9f",
+              "modifiedFolders": ["Notebook 2.Notebook"]
             }'
