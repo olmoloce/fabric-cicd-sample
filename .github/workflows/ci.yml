@@ -1,22 +1,33 @@
 name: CI
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch: # Allows manual trigger
+
+env:
+  STORAGE_ACCOUNT: ${{ vars.CODE_STORAGE_ACCOUNT }}
+  FABRIC_DEPLOYMENT_HUB_URL: ${{ vars.FABRIC_DEPLOYMENT_HUB_URL }}
+  WORKSPACE_IDS: ${{ vars.WORKSPACE_IDS }}
 
 jobs:
-  deploy:
+  build:
     runs-on: self-hosted
 
     steps:
-      # Step 1: Check out the repository
+      # Step 1: Ensure the ACA environment has Git installed
+      - name: Install Git (if necessary)
+        run: |
+          if ! command -v git &> /dev/null; then
+            echo "Git not found. Installing..."
+            apt-get update && apt-get install -y git
+          fi
+          git --version
+
+      # Step 2: Check out the repository
       - name: Check out the code
         uses: actions/checkout@v4
 
-      # Step 2: Identify modified folders
+      # Step 3: Identify modified folders
       - name: Get modified folders
         id: modified_folders
         run: |
@@ -26,74 +37,24 @@ jobs:
           echo "folders=$MODIFIED_FOLDERS" >> $GITHUB_ENV
         shell: bash
 
-      # Step 3: Authenticate with Azure using Managed Identity
+      # Step 4: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure
-        run: az login --identity
-
-      # Step 4: Generate a unique container name for the deployment plan
-      - name: Generate container name
-        id: generate_container_name
         run: |
-          CONTAINER_NAME=$(uuidgen)
-          echo "Generated container name: $CONTAINER_NAME"
-          echo "container_name=$CONTAINER_NAME" >> $GITHUB_ENV
-        shell: bash
+          az login --identity
 
       # Step 5: Upload repository to shared storage
       - name: Upload repository to shared storage
-        env:
-          STORAGE_ACCOUNT: ${{ vars.CODE_STORAGE_ACCOUNT }}
-          CONTAINER_NAME: ${{ env.container_name }}
         run: |
-          echo "Uploading repository to shared storage..."
-          azcopy copy "$GITHUB_WORKSPACE" "https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}" --recursive
+          azcopy copy "$GITHUB_WORKSPACE" "https://${{ env.STORAGE_ACCOUNT }}.blob.core.windows.net/$(uuidgen)" --recursive
 
-      # Step 6: Plan Deployment
-      - name: Plan Deployment
-        id: plan_deployment
-        env:
-          FABRIC_DEPLOYMENT_HUB_URL: ${{ vars.FABRIC_DEPLOYMENT_HUB_URL }}
-          CONTAINER_NAME: ${{ env.container_name }}
-          WORKSPACE_IDS: ${{ vars.WORKSPACE_IDS }}
-          MODIFIED_FOLDERS: ${{ env.folders }}
+      # Step 6: Call the deployment API
+      - name: Call Deployment API
         run: |
-          echo "Calling Deployment Planning API..."
-          RESPONSE=$(curl -s -X POST "$FABRIC_DEPLOYMENT_HUB_URL/api/Planner/tenant-deployment-plan" \
+          curl -X POST "$FABRIC_DEPLOYMENT_HUB_URL/api/Deployments" \
             -H "Content-Type: application/json" \
             -d '{
-              "workspaceIds": '"$WORKSPACE_IDS"',
-              "repoContainer": "'"$CONTAINER_NAME"'",
-              "modifiedFolders": ["'$MODIFIED_FOLDERS'"],
-              "savePlan": true
-            }')
-
-          echo "Deployment Plan Response: $RESPONSE"
-          echo "response=$RESPONSE" >> $GITHUB_ENV
-        shell: bash
-
-      # Step 7: Apply Deployment
-      - name: Apply Deployment
-        env:
-          FABRIC_DEPLOYMENT_HUB_URL: ${{ vars.FABRIC_DEPLOYMENT_HUB_URL }}
-          RESPONSE: ${{ env.response }}
-        run: |
-          echo "Applying Deployment Plan..."
-          SAVED_PLAN_CONTAINER=$(echo "$RESPONSE" | jq -r '.savedContainerName')
-          SAVED_PLAN_NAME=$(echo "$RESPONSE" | jq -r '.savedPlanName')
-
-          curl -s -X POST "$FABRIC_DEPLOYMENT_HUB_URL/api/Deployments" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "useSavedPlan": true,
-              "repoContainer": "'"$SAVED_PLAN_CONTAINER"'",
-              "planName": "'"$SAVED_PLAN_NAME"'"
+              "workspaceIds": [${{ env.WORKSPACE_IDS }}],
+              "repoContainer": "<container_name>",
+              "modifiedFolders": ["'$MODIFIED_FOLDERS'"]
             }'
-        shell: bash
-
-      # Step 8: Upload logs (optional)
-      - name: Upload logs
-        if: failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: deployment-logs
-          path: ./logs/
+            
