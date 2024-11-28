@@ -33,8 +33,8 @@ jobs:
         shell: bash
 
       # Step 2: Identify modified folders
-      - name: Identify modified files
-        id: modified_files
+      - name: Identify relevant folders
+        id: relevant_folders
         run: |
           if git rev-parse HEAD^ &> /dev/null; then
             echo "Fetching modified files between HEAD and HEAD^..."
@@ -45,12 +45,17 @@ jobs:
           fi
           echo "Modified files detected:"
           echo "$MODIFIED_FILES"
+          
+          # Filter files by extensions and extract folders
+          RELEVANT_FOLDERS=$(echo "$MODIFIED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
+          echo "Relevant folders detected:"
+          echo "$RELEVANT_FOLDERS"
+          echo "folders=$RELEVANT_FOLDERS" >> $GITHUB_ENV
         shell: bash
 
       # Step 3: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure
-        run: |
-          az login --identity
+        uses: azure/login@v1
 
       # Step 4: Create a blob container with a GUID
       - name: Generate container name
