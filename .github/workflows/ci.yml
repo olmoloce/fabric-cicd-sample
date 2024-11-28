@@ -56,6 +56,8 @@ jobs:
       # Step 3: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure
         uses: azure/login@v1
+        with:
+          auth-type: managed-identity
 
       # Step 4: Create a blob container with a GUID
       - name: Generate container name
