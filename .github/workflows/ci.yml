@@ -33,18 +33,18 @@ jobs:
         shell: bash
 
       # Step 2: Identify modified folders
-      - name: Identify modified folders
-        id: modified_folders
+      - name: Identify modified files
+        id: modified_files
         run: |
           if git rev-parse HEAD^ &> /dev/null; then
-            echo "Fetching modified folders between HEAD and HEAD^..."
-            MODIFIED_FOLDERS=$(git diff --name-only HEAD^ HEAD | cut -d'/' -f1 | sort | uniq)
+            echo "Fetching modified files between HEAD and HEAD^..."
+            MODIFIED_FILES=$(git diff --name-only HEAD^ HEAD)
           else
-            echo "No previous commit found. Fetching modified folders for HEAD..."
-            MODIFIED_FOLDERS=$(git ls-tree --name-only -r HEAD | cut -d'/' -f1 | sort | uniq)
+            echo "No previous commit found. Fetching all files in HEAD..."
+            MODIFIED_FILES=$(git ls-tree --name-only -r HEAD)
           fi
-          echo "Modified folders detected: $MODIFIED_FOLDERS"
-          echo "folders=$MODIFIED_FOLDERS" >> $GITHUB_ENV
+          echo "Modified files detected:"
+          echo "$MODIFIED_FILES"
         shell: bash
 
       # Step 3: Authenticate with Azure using Managed Identity
