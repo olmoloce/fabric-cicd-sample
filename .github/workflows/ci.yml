@@ -19,7 +19,17 @@ jobs:
       # Step 1: Check out the repository
       - name: Check out the code
         uses: actions/checkout@v4
-
+      # step 1.1: check git is installed
+      - name: Check if Git is installed
+        run: |
+          if command -v git &> /dev/null; then
+            echo "Git is installed."
+            git --version
+          else
+            echo "Git is not installed."
+            exit 1
+          fi
+        shell: bash
       # Step 2: Obtain the modified folders list using GitHub API
       - name: Get modified folders
         id: modified_folders
@@ -57,7 +67,7 @@ jobs:
       # Step 5: Call the deployment API
       - name: Call Deployment API
         run: |
-          curl -X POST "$FABRIC_DEPLOYMENT_HUB_URL/api/Deployments" \
+          curl -X POST "https://$FABRIC_DEPLOYMENT_HUB_URL/api/Planner/tenant-deployment-plan" \
             -H "Content-Type: application/json" \
             -d '{
               "workspaceIds": [${{ env.WORKSPACE_IDS }}],
