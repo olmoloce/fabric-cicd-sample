@@ -19,7 +19,8 @@ jobs:
       # Step 1: Check out the repository
       - name: Check out the code
         uses: actions/checkout@v4
-      # step 1.1: check git is installed
+
+      # Step 1.1: Ensure Git is installed
       - name: Check if Git is installed
         run: |
           if command -v git &> /dev/null; then
@@ -30,28 +31,14 @@ jobs:
             exit 1
           fi
         shell: bash
-      # Step 2: Obtain the modified folders list using GitHub API
-      - name: Get modified folders
+
+      # Step 2: Identify modified folders
+      - name: Identify modified folders
         id: modified_folders
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # Fetch modified folders for pull requests
-            echo "Running for pull request..."
-            RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-              https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files)
-            MODIFIED_FOLDERS=$(echo "$RESPONSE" | jq -r '.[].filename | split("/")[0]' | sort | uniq)
-          else
-            # Fetch modified folders for push events
-            echo "Running for push event..."
-            RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-              https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/files)
-            MODIFIED_FOLDERS=$(echo "$RESPONSE" | jq -r '.[].filename | split("/")[0]' | sort | uniq)
-          fi
-
+          MODIFIED_FOLDERS=$(git diff --name-only HEAD^ HEAD | cut -d'/' -f1 | sort | uniq)
           echo "Modified folders detected: $MODIFIED_FOLDERS"
           echo "folders=$MODIFIED_FOLDERS" >> $GITHUB_ENV
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
 
       # Step 3: Authenticate with Azure using Managed Identity
@@ -59,18 +46,33 @@ jobs:
         run: |
           az login --identity
 
-      # Step 4: Upload repository to shared storage
+      # Step 4: Create a blob container with a GUID
+      - name: Generate container name
+        id: container
+        run: |
+          GENERATED_CONTAINER=$(uuidgen)
+          echo "Generated container name: $GENERATED_CONTAINER"
+          echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
+        shell: bash
+
+      # Step 5: Upload repository to shared storage
       - name: Upload repository to shared storage
         run: |
-          azcopy copy "$GITHUB_WORKSPACE" "https://${{ env.STORAGE_ACCOUNT }}.blob.core.windows.net/$(uuidgen)" --recursive
+          az storage container create \
+            --account-name "${{ env.STORAGE_ACCOUNT }}" \
+            --name "$container_name" \
+            --auth-mode login
+          azcopy copy "$GITHUB_WORKSPACE" "https://${{ env.STORAGE_ACCOUNT }}.blob.core.windows.net/$container_name" --recursive
+        env:
+          container_name: ${{ env.container_name }}
 
-      # Step 5: Call the deployment API
+      # Step 6: Call the deployment API
       - name: Call Deployment API
         run: |
           curl -X POST "https://$FABRIC_DEPLOYMENT_HUB_URL/api/Planner/tenant-deployment-plan" \
             -H "Content-Type: application/json" \
             -d '{
               "workspaceIds": [${{ env.WORKSPACE_IDS }}],
-              "repoContainer": "<container_name>",
+              "repoContainer": "'$container_name'",
               "modifiedFolders": ["'$MODIFIED_FOLDERS'"]
             }'
