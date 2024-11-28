@@ -36,7 +36,13 @@ jobs:
       - name: Identify modified folders
         id: modified_folders
         run: |
-          MODIFIED_FOLDERS=$(git diff --name-only HEAD^ HEAD | cut -d'/' -f1 | sort | uniq)
+          if git rev-parse HEAD^ &> /dev/null; then
+            echo "Fetching modified folders between HEAD and HEAD^..."
+            MODIFIED_FOLDERS=$(git diff --name-only HEAD^ HEAD | cut -d'/' -f1 | sort | uniq)
+          else
+            echo "No previous commit found. Fetching modified folders for HEAD..."
+            MODIFIED_FOLDERS=$(git ls-tree --name-only -r HEAD | cut -d'/' -f1 | sort | uniq)
+          fi
           echo "Modified folders detected: $MODIFIED_FOLDERS"
           echo "folders=$MODIFIED_FOLDERS" >> $GITHUB_ENV
         shell: bash
