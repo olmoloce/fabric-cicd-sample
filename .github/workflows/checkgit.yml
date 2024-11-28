@@ -1,0 +1,19 @@
+name: Check Git Installation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check-git:
+    runs-on: self-hosted # Or change to `ubuntu-latest` for GitHub-hosted runners
+    steps:
+      - name: Check if Git is installed
+        run: |
+          if command -v git &> /dev/null; then
+            echo "Git is installed."
+            git --version
+          else
+            echo "Git is not installed."
+            exit 1
+          fi
+        shell: bash
