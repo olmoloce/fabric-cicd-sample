@@ -77,9 +77,9 @@ jobs:
         uses: azure/login@v1
         with:
           auth-type: IDENTITY
-          client-id: ${{ inputs.azure-client-id }}
-          tenant-id: ${{ inputs.azure-tenant-id }}
-          subscription-id: ${{ inputs.azure-subscription-id }}
+          client-id: ${{ github.event.inputs.azure-client-id }}
+          tenant-id: ${{ github.event.inputs.azure-tenant-id }}
+          subscription-id: ${{ github.event.inputs.azure-subscription-id }}
           enable-AzPSSession: true
 
       # Step 4: Create a blob container with a GUID
