@@ -1,21 +1,33 @@
 name: CI
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  workflow_dispatch:
-      inputs:
-        azure-client-id:
-          description: "Azure Client ID"
-          required: true
-        azure-tenant-id:
-          description: "Azure Tenant ID"
-          required: true
-        azure-subscription-id:
-          description: "Azure Subscription ID"
-          required: true
+  workflow_dispatch: # Trigger manually
+    inputs:
+      azure-client-id:
+        description: "Azure Client ID"
+        required: true
+      azure-tenant-id:
+        description: "Azure Tenant ID"
+        required: true
+      azure-subscription-id:
+        description: "Azure Subscription ID"
+        required: true
+# on:
+#   push:
+#     branches: [ "main" ]
+#   pull_request:
+#     branches: [ "main" ]
+#   workflow_dispatch:
+#       inputs:
+#         azure-client-id:
+#           description: "Azure Client ID"
+#           required: true
+#         azure-tenant-id:
+#           description: "Azure Tenant ID"
+#           required: true
+#         azure-subscription-id:
+#           description: "Azure Subscription ID"
+#           required: true
         # storage-account:
         #   description: "Storage Account Name"
         #   required: true
