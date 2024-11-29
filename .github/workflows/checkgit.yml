@@ -17,3 +17,15 @@ jobs:
             exit 1
           fi
         shell: bash
+
+      # Check Azure CLI installation
+      - name: Check if Azure CLI (az) is installed
+        run: |
+          if command -v az &> /dev/null; then
+            echo "Azure CLI (az) is installed."
+            az --version
+          else
+            echo "Azure CLI (az) is not installed."
+            exit 1
+          fi
+        shell: bash        
