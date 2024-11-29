@@ -5,7 +5,26 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
+  workflow_dispatch:
+      inputs:
+        azure-client-id:
+          description: "Azure Client ID"
+          required: true
+        azure-tenant-id:
+          description: "Azure Tenant ID"
+          required: true
+        azure-subscription-id:
+          description: "Azure Subscription ID"
+          required: true
+        # storage-account:
+        #   description: "Storage Account Name"
+        #   required: true
+        # fabric-deployment-hub-url:
+        #   description: "Fabric Deployment Hub URL"
+        #   required: true
+        # workspace-ids:
+        #   description: "Comma-separated list of Workspace IDs"
+        #   required: true
 env:
   STORAGE_ACCOUNT: ${{ vars.CODE_STORAGE_ACCOUNT }}
   FABRIC_DEPLOYMENT_HUB_URL: ${{ vars.FABRIC_DEPLOYMENT_HUB_URL }}
@@ -58,6 +77,10 @@ jobs:
         uses: azure/login@v1
         with:
           auth-type: IDENTITY
+          client-id: ${{ inputs.azure-client-id }}
+          tenant-id: ${{ inputs.azure-tenant-id }}
+          subscription-id: ${{ inputs.azure-subscription-id }}
+          enable-AzPSSession: true
 
       # Step 4: Create a blob container with a GUID
       - name: Generate container name
