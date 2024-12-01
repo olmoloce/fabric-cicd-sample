@@ -44,6 +44,6 @@ jobs:
       # Step 3: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure using Managed Identity
         run: |
-          az login --identity --username ${{ github.event.inputs.azure-client-id }}
+          az login --identity 
           az account set --subscription ${{ github.event.inputs.azure-subscription-id }}
         shell: bash
