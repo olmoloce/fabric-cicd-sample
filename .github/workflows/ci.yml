@@ -1,6 +1,9 @@
 name: CI Workflow
 
 on:
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 env:
@@ -9,58 +12,94 @@ env:
   WORKSPACE_IDS: ${{ vars.WORKSPACE_IDS }}
 
 jobs:
-  prepare:
+  prep:
+    name: Preparation Phase
     runs-on: self-hosted
     outputs:
-      container_name: ${{ steps.generate_container.outputs.container_name }}
+      container_name: ${{ steps.container.outputs.container_name }}
+      folders: ${{ steps.changed_folders.outputs.folders }}
     steps:
-      - name: Check out the repository
+      # Step 1: Check out the repository
+      - name: Check out the code
         uses: actions/checkout@v4
 
+      # Step 2: Identify changed folders
+      - name: Identify changed folders
+        id: changed_folders
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Running in a pull request context..."
+            BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+            git fetch origin "$BASE_BRANCH"
+            CHANGED_FILES=$(git diff --name-only "origin/$BASE_BRANCH" HEAD)
+          else
+            echo "Not a pull request. Assuming manual run or push event..."
+            if git rev-parse HEAD^ &> /dev/null; then
+              CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+            else
+              CHANGED_FILES=$(git ls-tree --name-only -r HEAD)
+            fi
+          fi
+
+          echo "Changed files detected:"
+          echo "$CHANGED_FILES"
+
+          # Filter files to exclude `.env` and extract folders
+          CHANGED_FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | grep -v '\.env' | cut -d'/' -f1 | sort | uniq)
+          echo "Changed folders detected:"
+          echo "$CHANGED_FOLDERS"
+
+          # Save folders as output
+          echo "::set-output name=folders::$(echo "$CHANGED_FOLDERS" | awk -v ORS=',' '{print $0}' | sed 's/,$//')"
+        shell: bash
+
+      # Step 3: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure using Managed Identity
         run: |
-          az login --identity
+          az login --identity 
         shell: bash
 
-      - name: Generate Container Name
-        id: generate_container
+      # Step 4: Generate a blob container name
+      - name: Generate container name
+        id: container
         run: |
           GENERATED_CONTAINER=$(cat /proc/sys/kernel/random/uuid)
-          echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
+          echo "Generated container name: $GENERATED_CONTAINER"
+          echo "::set-output name=container_name::$GENERATED_CONTAINER"
         shell: bash
 
-      - name: Upload repository to shared storage
+      # Step 5: Copy changed folders to blob container
+      - name: Upload changed folders to blob
         run: |
           az storage container create \
             --account-name "${{ env.STORAGE_ACCOUNT }}" \
-            --name "$container_name" \
+            --name "${{ steps.container.outputs.container_name }}" \
             --auth-mode login
 
-          az storage blob upload-batch \
-            --account-name "${{ env.STORAGE_ACCOUNT }}" \
-            --destination "$container_name" \
-            --source "$GITHUB_WORKSPACE" \
-            --auth-mode login
-        env:
-          container_name: ${{ env.container_name }}
-        shell: bash
+          for folder in $(echo "${{ steps.changed_folders.outputs.folders }}" | tr ',' ' '); do
+            echo "Copying folder: $folder"
+            az storage blob upload-batch \
+              --account-name "${{ env.STORAGE_ACCOUNT }}" \
+              --destination "${{ steps.container.outputs.container_name }}/$folder" \
+              --source "$GITHUB_WORKSPACE/$folder" \
+              --auth-mode login
+          done
 
   plan:
-    needs: prepare
+    name: Plan Phase
+    needs: prep
     runs-on: self-hosted
     steps:
-      - name: Call Deployment API (Plan Phase)
+      - name: Call Deployment API
         run: |
           curl -X POST "https://${{ env.FABRIC_DEPLOYMENT_HUB_URL }}/api/Planner/tenant-deployment-plan" \
             -H "Content-Type: application/json" \
             -d '{
-              "workspaceIds": ["4aca0508-e966-40a7-a2a2-84861b281c83", "3dc6d3ea-f6c5-41c6-b9f7-dbdadccfd76e"],
-              "repoContainer": "${{ env.container_name }}",
-              "modifiedFolders": ["Notebook 2.Notebook"],
-              "savePlan": true
+              "workspaceIds": ['${{ env.WORKSPACE_IDS }}'],
+              "repoContainer": "'${{ needs.prep.outputs.container_name }}'",
+              "modifiedFolders": ['${{ needs.prep.outputs.folders }}'],
+              "savePlan" : true
             }'
-        shell: bash
-
   validate:
     needs: plan
     runs-on: self-hosted
