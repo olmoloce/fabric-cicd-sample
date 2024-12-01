@@ -4,11 +4,11 @@ on:
   workflow_dispatch: # Trigger manually
     inputs:
       azure-client-id:
-        description: "Azure Client ID"
-        required: true
-      azure-tenant-id:
-        description: "Azure Tenant ID"
-        required: true
+      #   description: "Azure Client ID"
+      #   required: true
+      # azure-tenant-id:
+      #   description: "Azure Tenant ID"
+      #   required: true
       azure-subscription-id:
         description: "Azure Subscription ID"
         required: true
@@ -85,14 +85,11 @@ jobs:
       #   shell: bash
 
       # Step 3: Authenticate with Azure using Managed Identity
-      - name: Authenticate with Azure
-        uses: azure/login@v1
-        with:
-          auth-type: IDENTITY
-          client-id: ${{ github.event.inputs.azure-client-id }}
-          tenant-id: ${{ github.event.inputs.azure-tenant-id }}
-          subscription-id: ${{ github.event.inputs.azure-subscription-id }}
-          enable-AzPSSession: true
+      - name: Authenticate with Azure using Managed Identity
+        run: |
+          az login --identity 
+          az account set --subscription ${{ github.event.inputs.azure-subscription-id }}
+        shell: bash
 
       # Step 4: Create a blob container with a GUID
       - name: Generate container name
