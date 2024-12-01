@@ -26,21 +26,23 @@ jobs:
         id: generate_container
         run: |
           GENERATED_CONTAINER=$(cat /proc/sys/kernel/random/uuid)
-          echo "::set-output name=container_name::$GENERATED_CONTAINER"
+          echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
         shell: bash
 
       - name: Upload repository to shared storage
         run: |
           az storage container create \
             --account-name "${{ env.STORAGE_ACCOUNT }}" \
-            --name "${{ steps.generate_container.outputs.container_name }}" \
+            --name "$container_name" \
             --auth-mode login
 
           az storage blob upload-batch \
             --account-name "${{ env.STORAGE_ACCOUNT }}" \
-            --destination "${{ steps.generate_container.outputs.container_name }}" \
+            --destination "$container_name" \
             --source "$GITHUB_WORKSPACE" \
             --auth-mode login
+        env:
+          container_name: ${{ env.container_name }}
         shell: bash
 
   plan:
@@ -53,7 +55,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{
               "workspaceIds": ["4aca0508-e966-40a7-a2a2-84861b281c83", "3dc6d3ea-f6c5-41c6-b9f7-dbdadccfd76e"],
-              "repoContainer": "${{ needs.prepare.outputs.container_name }}",
+              "repoContainer": "${{ env.container_name }}",
               "modifiedFolders": ["Notebook 2.Notebook"],
               "savePlan": true
             }'
