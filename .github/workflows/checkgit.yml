@@ -1,51 +1,50 @@
-name: Identify Changed Files and Folders
+name: Test Changed Folders
 
 on:
-  workflow_dispatch: # Manually triggered for testing
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # For manual testing
 
 jobs:
-  identify-changes:
+  test-changed-folders:
     runs-on: self-hosted
 
     steps:
-      # Step 1: Check out the code
+      # Step 1: Check out the repository
       - name: Check out the code
         uses: actions/checkout@v4
 
-      # Step 2: Identify changed files
-      - name: Get changed files
-        id: changed_files
+      # Step 2: Identify changed files and deduce folders
+      - name: Identify changed folders
+        id: changed_folders
         run: |
-          if git rev-parse HEAD^ &> /dev/null; then
-            echo "Fetching changed files between HEAD and HEAD^..."
-            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
-          else
-            echo "No previous commit found. Fetching all files in HEAD..."
-            CHANGED_FILES=$(git ls-tree --name-only -r HEAD)
-          fi
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Running in a pull request context..."
+            CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD)
+            else
+            echo "Not a pull request. Assuming manual run or push event..."
+            if git rev-parse HEAD^ &> /dev/null; then
+                CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+            else
+                CHANGED_FILES=$(git ls-tree --name-only -r HEAD)
+            fi
+            fi
+        
+            echo "Changed files detected:"
+            echo "$CHANGED_FILES"
+        
+            # Extract folders from file paths
+            CHANGED_FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
+            echo "Changed folders detected:"
+            echo "$CHANGED_FOLDERS"
+        
+            echo "folders=$CHANGED_FOLDERS" >> $GITHUB_ENV
+        shell: bash
 
-          echo "Changed files detected:"
-          echo "$CHANGED_FILES"
-
-          # Convert multiline string to a single line with spaces
-          CHANGED_FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ' ')
-          echo "changed_files=$CHANGED_FILES_LIST" >> $GITHUB_ENV
-
-      # Step 3: Deduce unique folders
-      - name: Extract unique folders
-        id: unique_folders
+      # Step 3: Log the results
+      - name: Log detected folders
         run: |
-          FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
-
-          echo "Unique folders detected:"
-          echo "$FOLDERS"
-
-          # Convert multiline string to a single line with spaces
-          FOLDERS_LIST=$(echo "$FOLDERS" | tr '\n' ' ')
-          echo "folders=$FOLDERS_LIST" >> $GITHUB_ENV
-
-      # Step 4: Display results
-      - name: Display results
-        run: |
-          echo "Changed files: ${{ env.changed_files }}"
-          echo "Unique folders: ${{ env.folders }}"
+          echo "Detected changed folders:"
+          echo "$folders"
+        shell: bash
