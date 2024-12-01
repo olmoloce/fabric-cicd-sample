@@ -122,5 +122,6 @@ jobs:
             -d '{
               "workspaceIds": ["4aca0508-e966-40a7-a2a2-84861b281c83","3dc6d3ea-f6c5-41c6-b9f7-dbdadccfd76e"],
               "repoContainer": "8aff1b19-4d31-4586-8ff7-6b9aee2f5c9f",
-              "modifiedFolders": ["Notebook 2.Notebook"]
+              "modifiedFolders": ["Notebook 2.Notebook"],
+              "savePlan" : true
             }'
