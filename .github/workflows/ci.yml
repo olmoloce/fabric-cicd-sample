@@ -51,17 +51,17 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v4
 
-      # Step 1.1: Ensure Git is installed
-      - name: Check if Git is installed
-        run: |
-          if command -v git &> /dev/null; then
-            echo "Git is installed."
-            git --version
-          else
-            echo "Git is not installed."
-            exit 1
-          fi
-        shell: bash
+      # # Step 1.1: Ensure Git is installed
+      # - name: Check if Git is installed
+      #   run: |
+      #     if command -v git &> /dev/null; then
+      #       echo "Git is installed."
+      #       git --version
+      #     else
+      #       echo "Git is not installed."
+      #       exit 1
+      #     fi
+      #   shell: bash
 
       # Step 2: Identify modified folders
       # - name: Identify relevant folders
@@ -120,7 +120,7 @@ jobs:
           curl -X POST "https://${{ env.FABRIC_DEPLOYMENT_HUB_URL }}/api/Planner/tenant-deployment-plan" \
             -H "Content-Type: application/json" \
             -d '{
-              "workspaceIds": [${{ env.WORKSPACE_IDS }}],
+              "workspaceIds": ["4aca0508-e966-40a7-a2a2-84861b281c83","3dc6d3ea-f6c5-41c6-b9f7-dbdadccfd76e"],
               "repoContainer": "8aff1b19-4d31-4586-8ff7-6b9aee2f5c9f",
               "modifiedFolders": ["Notebook 2.Notebook"]
             }'
