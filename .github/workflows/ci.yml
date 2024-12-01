@@ -9,9 +9,9 @@ on:
       # # azure-tenant-id:
       # #   description: "Azure Tenant ID"
       # #   required: true
-      azure-subscription-id:
-        description: "Azure Subscription ID"
-        required: true
+      # azure-subscription-id:
+      #   description: "Azure Subscription ID"
+      #   required: true
 # on:
 #   push:
 #     branches: [ "main" ]
@@ -88,18 +88,16 @@ jobs:
       - name: Authenticate with Azure using Managed Identity
         run: |
           az login --identity 
-          az account set --subscription ${{ github.event.inputs.azure-subscription-id }}
         shell: bash
 
       # Step 4: Create a blob container with a GUID
       - name: Generate container name
         id: container
         run: |
-          GENERATED_CONTAINER=$(uuidgen)
+          GENERATED_CONTAINER=$(cat /proc/sys/kernel/random/uuid)
           echo "Generated container name: $GENERATED_CONTAINER"
           echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
         shell: bash
-
       # Step 5: Upload repository to shared storage
       - name: Upload repository to shared storage
         run: |
