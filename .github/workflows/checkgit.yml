@@ -2,16 +2,16 @@ name: Check Git and Azure CLI Installation
 
 on:
   workflow_dispatch:
-    inputs:
-      azure-client-id:
-        description: "Azure Client ID"
-        required: true
-      azure-tenant-id:
-        description: "Azure Tenant ID"
-        required: true
-      azure-subscription-id:
-        description: "Azure Subscription ID"
-        required: true
+    # inputs:
+    #   azure-client-id:
+    #     description: "Azure Client ID"
+    #     required: true
+    #   azure-tenant-id:
+    #     description: "Azure Tenant ID"
+    #     required: true
+    #   azure-subscription-id:
+    #     description: "Azure Subscription ID"
+    #     required: true
 
 jobs:
   check-git-and-azure-cli:
@@ -28,13 +28,27 @@ jobs:
             exit 1
           fi
         shell: bash
-      - name: Test External Network Access
+      - name: Generate container name
+        id: container
         run: |
-          echo "Testing external network access..."
-          ping -c 3 8.8.8.8 || echo "Ping to 8.8.8.8 failed."
-          curl -I http://www.google.com || echo "Curl failed."
+          GENERATED_CONTAINER=$(cat /proc/sys/kernel/random/uuid)
+          echo "Generated container name: $GENERATED_CONTAINER"
+          echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
         shell: bash
-        
+      - name: Generate container name
+        id: container2
+        run: |
+          GENERATED_CONTAINER=$(python3 -c "import uuid; print(uuid.uuid4())")
+          echo "Generated container name: $GENERATED_CONTAINER"
+          echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
+        shell: bash  
+      - name: Generate container name
+        id: container3
+        run: |
+            GENERATED_CONTAINER="code-$(date +%s)-$RANDOM"
+            echo "Generated container name: $GENERATED_CONTAINER"
+            echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
+        shell: bash
       # Step 2: Test MSI Endpoint
     #   - name: Test MSI Endpoint
     #     run: |
@@ -42,8 +56,8 @@ jobs:
     #     shell: bash
       
       # Step 3: Authenticate with Azure using Managed Identity
-      - name: Authenticate with Azure using Managed Identity
-        run: |
-          az login --identity 
-          az account set --subscription ${{ github.event.inputs.azure-subscription-id }}
-        shell: bash
+    #   - name: Authenticate with Azure using Managed Identity
+    #     run: |
+    #       az login --identity 
+    #       az account set --subscription ${{ github.event.inputs.azure-subscription-id }}
+    #     shell: bash
