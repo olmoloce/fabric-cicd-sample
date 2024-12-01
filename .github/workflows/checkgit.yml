@@ -28,7 +28,13 @@ jobs:
             exit 1
           fi
         shell: bash
-      
+      - name: Test External Network Access
+        run: |
+          echo "Testing external network access..."
+          ping -c 3 8.8.8.8 || echo "Ping to 8.8.8.8 failed."
+          curl -I http://example.com || echo "Curl to example.com failed."
+        shell: bash
+        
       # Step 2: Test MSI Endpoint
       - name: Test MSI Endpoint
         run: |
