@@ -2,7 +2,7 @@ name: CI
 
 on:
   workflow_dispatch: # Trigger manually
-    inputs:
+    # inputs:
       # azure-client-id:
       # #   description: "Azure Client ID"
       # #   required: true
