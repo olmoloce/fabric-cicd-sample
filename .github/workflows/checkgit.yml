@@ -26,21 +26,26 @@ jobs:
 
           echo "Changed files detected:"
           echo "$CHANGED_FILES"
-          echo "changed_files=$CHANGED_FILES" >> $GITHUB_ENV
 
-      # Step 3: Deduce folders from the changed files
+          # Convert multiline string to a single line with spaces
+          CHANGED_FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+          echo "changed_files=$CHANGED_FILES_LIST" >> $GITHUB_ENV
+
+      # Step 3: Deduce unique folders
       - name: Extract unique folders
         id: unique_folders
         run: |
           FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
+
           echo "Unique folders detected:"
           echo "$FOLDERS"
-          echo "folders=$FOLDERS" >> $GITHUB_ENV
 
-      # Step 4: Output results
+          # Convert multiline string to a single line with spaces
+          FOLDERS_LIST=$(echo "$FOLDERS" | tr '\n' ' ')
+          echo "folders=$FOLDERS_LIST" >> $GITHUB_ENV
+
+      # Step 4: Display results
       - name: Display results
         run: |
-          echo "Changed files:"
-          echo "$CHANGED_FILES"
-          echo "Folders:"
-          echo "$FOLDERS"
+          echo "Changed files: ${{ env.changed_files }}"
+          echo "Unique folders: ${{ env.folders }}"
