@@ -1,63 +1,46 @@
-name: Check Git and Azure CLI Installation
+name: Identify Changed Files and Folders
 
 on:
-  workflow_dispatch:
-    # inputs:
-    #   azure-client-id:
-    #     description: "Azure Client ID"
-    #     required: true
-    #   azure-tenant-id:
-    #     description: "Azure Tenant ID"
-    #     required: true
-    #   azure-subscription-id:
-    #     description: "Azure Subscription ID"
-    #     required: true
+  workflow_dispatch: # Manually triggered for testing
 
 jobs:
-  check-git-and-azure-cli:
-    runs-on: self-hosted # Or change to `ubuntu-latest` for GitHub-hosted runners
+  identify-changes:
+    runs-on: self-hosted
+
     steps:
-      # Step 1: Check if Git is installed
-      - name: Check if Git is installed
+      # Step 1: Check out the code
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      # Step 2: Identify changed files
+      - name: Get changed files
+        id: changed_files
         run: |
-          if command -v git &> /dev/null; then
-            echo "Git is installed."
-            git --version
+          if git rev-parse HEAD^ &> /dev/null; then
+            echo "Fetching changed files between HEAD and HEAD^..."
+            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
           else
-            echo "Git is not installed."
-            exit 1
+            echo "No previous commit found. Fetching all files in HEAD..."
+            CHANGED_FILES=$(git ls-tree --name-only -r HEAD)
           fi
-        shell: bash
-      - name: Generate container name
-        id: container
+
+          echo "Changed files detected:"
+          echo "$CHANGED_FILES"
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_ENV
+
+      # Step 3: Deduce folders from the changed files
+      - name: Extract unique folders
+        id: unique_folders
         run: |
-          GENERATED_CONTAINER=$(cat /proc/sys/kernel/random/uuid)
-          echo "Generated container name: $GENERATED_CONTAINER"
-          echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
-        shell: bash
-      - name: Generate container name
-        id: container2
+          FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
+          echo "Unique folders detected:"
+          echo "$FOLDERS"
+          echo "folders=$FOLDERS" >> $GITHUB_ENV
+
+      # Step 4: Output results
+      - name: Display results
         run: |
-          GENERATED_CONTAINER=$(python3 -c "import uuid; print(uuid.uuid4())")
-          echo "Generated container name: $GENERATED_CONTAINER"
-          echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
-        shell: bash  
-      - name: Generate container name
-        id: container3
-        run: |
-            GENERATED_CONTAINER="code-$(date +%s)-$RANDOM"
-            echo "Generated container name: $GENERATED_CONTAINER"
-            echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
-        shell: bash
-      # Step 2: Test MSI Endpoint
-    #   - name: Test MSI Endpoint
-    #     run: |
-    #       curl -v "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2019-08-01&resource=https://management.azure.com" -H "Metadata:true"
-    #     shell: bash
-      
-      # Step 3: Authenticate with Azure using Managed Identity
-    #   - name: Authenticate with Azure using Managed Identity
-    #     run: |
-    #       az login --identity 
-    #       az account set --subscription ${{ github.event.inputs.azure-subscription-id }}
-    #     shell: bash
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          echo "Folders:"
+          echo "$FOLDERS"
