@@ -32,14 +32,14 @@ jobs:
         run: |
           echo "Testing external network access..."
           ping -c 3 8.8.8.8 || echo "Ping to 8.8.8.8 failed."
-          curl -I http://example.com || echo "Curl to example.com failed."
+          curl -I http://www.google.com || echo "Curl failed."
         shell: bash
         
       # Step 2: Test MSI Endpoint
-      - name: Test MSI Endpoint
-        run: |
-          curl -v "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2019-08-01&resource=https://management.azure.com" -H "Metadata:true"
-        shell: bash
+    #   - name: Test MSI Endpoint
+    #     run: |
+    #       curl -v "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2019-08-01&resource=https://management.azure.com" -H "Metadata:true"
+    #     shell: bash
       
       # Step 3: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure using Managed Identity
