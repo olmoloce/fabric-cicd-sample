@@ -18,33 +18,35 @@ jobs:
           fetch-depth: 0 # Fetch all history for all branches
 
       # Step 2: Identify changed folders
+
       - name: Identify changed folders
         id: changed_folders
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "Running in a pull request context..."
             BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
             git fetch origin "$BASE_BRANCH"
             CHANGED_FILES=$(git diff --name-only "origin/$BASE_BRANCH" HEAD)
-          else
+            else
             echo "Not a pull request. Assuming manual run or push event..."
             if git rev-parse HEAD^ &> /dev/null; then
-              CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+                CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
             else
-              CHANGED_FILES=$(git ls-tree --name-only -r HEAD)
+                CHANGED_FILES=$(git ls-tree --name-only -r HEAD)
             fi
-          fi
+            fi
 
-          echo "Changed files detected:"
-          echo "$CHANGED_FILES"
+            echo "Changed files detected:"
+            echo "$CHANGED_FILES"
 
-          # Extract folders from file paths
-          CHANGED_FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
-          echo "Changed folders detected:"
-          echo "$CHANGED_FOLDERS"
+            # Extract folders from file paths
+            CHANGED_FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
+            echo "Changed folders detected:"
+            echo "$CHANGED_FOLDERS"
 
-          # Save folders as output
-          echo "folders=$CHANGED_FOLDERS" >> $GITHUB_ENV
+            # Save folders as output, quoting each folder to handle spaces
+            ESCAPED_FOLDERS=$(echo "$CHANGED_FOLDERS" | sed 's/ /\\ /g')
+            echo "folders=$ESCAPED_FOLDERS" >> $GITHUB_ENV
         shell: bash
 
       # Step 3: Output changed folders (for debugging)
