@@ -105,7 +105,12 @@ jobs:
             --account-name "${{ env.STORAGE_ACCOUNT }}" \
             --name "$container_name" \
             --auth-mode login
-          azcopy copy "$GITHUB_WORKSPACE" "https://${{ env.STORAGE_ACCOUNT }}.blob.core.windows.net/$container_name" --recursive
+      
+          az storage blob upload-batch \
+            --account-name "${{ env.STORAGE_ACCOUNT }}" \
+            --destination "$container_name" \
+            --source "$GITHUB_WORKSPACE" \
+            --auth-mode login
         env:
           container_name: ${{ env.container_name }}
 
