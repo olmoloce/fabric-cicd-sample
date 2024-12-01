@@ -3,9 +3,9 @@ name: CI
 on:
   workflow_dispatch: # Trigger manually
     # inputs:
-      # azure-client-id:
-      # #   description: "Azure Client ID"
-      # #   required: true
+    #   deploy-hub-endpoint:
+    #      description: "Deployment Hub URI"
+    #      required: true
       # # azure-tenant-id:
       # #   description: "Azure Tenant ID"
       # #   required: true
@@ -117,7 +117,7 @@ jobs:
       # Step 6: Call the deployment API
       - name: Call Deployment API
         run: |
-          curl -X POST "https://$FABRIC_DEPLOYMENT_HUB_URL/api/Planner/tenant-deployment-plan" \
+          curl -X POST "https://${{ env.FABRIC_DEPLOYMENT_HUB_URL }}/api/Planner/tenant-deployment-plan" \
             -H "Content-Type: application/json" \
             -d '{
               "workspaceIds": [${{ env.WORKSPACE_IDS }}],
