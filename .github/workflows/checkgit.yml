@@ -27,8 +27,12 @@ jobs:
             exit 1
           fi
         shell: bash
-
-      # Check Azure CLI installation
+    
+    - name: Test MSI Endpoint
+        run: |
+          curl -v http://169.254.169.254/metadata/identity/oauth2/token?api-version=2019-08-01&resource=https://management.azure.com -H Metadata:true
+    
+          # Check Azure CLI installation
       - name: Authenticate with Azure using Managed Identity
         run: |
           az login --identity --username ${{ github.event.inputs.azure-client-id }}
