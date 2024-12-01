@@ -49,8 +49,8 @@ jobs:
           echo "Changed folders detected:"
           echo "$CHANGED_FOLDERS"
 
-          # Save folders as output
-          echo "::set-output name=folders::$(echo "$CHANGED_FOLDERS" | awk -v ORS=',' '{print $0}' | sed 's/,$//')"
+          # Save folders as an environment variable
+          echo "folders=$(echo "$CHANGED_FOLDERS" | awk -v ORS=',' '{print $0}' | sed 's/,$//')" >> $GITHUB_ENV
         shell: bash
 
       # Step 3: Authenticate with Azure using Managed Identity
@@ -65,7 +65,8 @@ jobs:
         run: |
           GENERATED_CONTAINER=$(cat /proc/sys/kernel/random/uuid)
           echo "Generated container name: $GENERATED_CONTAINER"
-          echo "::set-output name=container_name::$GENERATED_CONTAINER"
+          # Save container name as an environment variable
+          echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
         shell: bash
 
       # Step 5: Copy changed folders to blob
