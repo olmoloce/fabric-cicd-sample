@@ -1,7 +1,17 @@
 name: Check Git Installation
 
 on:
-  workflow_dispatch:
+    workflow_dispatch: # Trigger manually
+        inputs:
+            azure-client-id:
+                description: "Azure Client ID"
+                required: true
+            azure-tenant-id:
+                description: "Azure Tenant ID"
+                required: true
+            azure-subscription-id:
+                description: "Azure Subscription ID"
+                required: true
 
 jobs:
   check-git:
@@ -19,13 +29,8 @@ jobs:
         shell: bash
 
       # Check Azure CLI installation
-      - name: Check if Azure CLI (az) is installed
+      - name: Authenticate with Azure using Managed Identity
         run: |
-          if command -v az &> /dev/null; then
-            echo "Azure CLI (az) is installed."
-            az --version
-          else
-            echo "Azure CLI (az) is not installed."
-            exit 1
-          fi
-        shell: bash        
+          az login --identity --username ${{ github.event.inputs.azure-client-id }}
+          az account set --subscription ${{ github.event.inputs.azure-subscription-id }}
+        shell: bash    
