@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0 # Fetch all history for all branches
 
       # Step 2: Identify changed folders
-
+# Step 2: Identify changed folders
       - name: Identify changed folders
         id: changed_folders
         run: |
@@ -39,14 +39,14 @@ jobs:
             echo "Changed files detected:"
             echo "$CHANGED_FILES"
 
-            # Extract folders from file paths
-            CHANGED_FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
+            # Filter files to exclude `.env` and extract folders
+            CHANGED_FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | grep -v '\.env' | cut -d'/' -f1 | sort | uniq)
             echo "Changed folders detected:"
             echo "$CHANGED_FOLDERS"
 
-            # Save folders as output, quoting each folder to handle spaces
-            ESCAPED_FOLDERS=$(echo "$CHANGED_FOLDERS" | sed 's/ /\\ /g')
-            echo "folders=$ESCAPED_FOLDERS" >> $GITHUB_ENV
+            # Save folders as a properly formatted environment variable
+            FORMATTED_FOLDERS=$(echo "$CHANGED_FOLDERS" | awk -v ORS=',' '{print "\"" $0 "\"" }' | sed 's/,$//')
+            echo "folders=$FORMATTED_FOLDERS" >> $GITHUB_ENV
         shell: bash
 
       # Step 3: Output changed folders (for debugging)
