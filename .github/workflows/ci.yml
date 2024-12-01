@@ -68,7 +68,7 @@ jobs:
           echo "::set-output name=container_name::$GENERATED_CONTAINER"
         shell: bash
 
-      # Step 5: Copy changed folders to blob container
+      # Step 5: Copy changed folders to blob
       - name: Upload changed folders to blob
         run: |
           az storage container create \
@@ -76,7 +76,9 @@ jobs:
             --name "${{ steps.container.outputs.container_name }}" \
             --auth-mode login
 
-          for folder in $(echo "${{ steps.changed_folders.outputs.folders }}" | tr ',' ' '); do
+          # Process folders with proper quoting
+          IFS=',' read -r -a FOLDER_ARRAY <<< "${{ steps.changed_folders.outputs.folders }}"
+          for folder in "${FOLDER_ARRAY[@]}"; do
             echo "Copying folder: $folder"
             az storage blob upload-batch \
               --account-name "${{ env.STORAGE_ACCOUNT }}" \
