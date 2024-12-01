@@ -1,127 +1,78 @@
-name: CI
+name: CI Workflow
 
 on:
-  workflow_dispatch: # Trigger manually
-    # inputs:
-    #   deploy-hub-endpoint:
-    #      description: "Deployment Hub URI"
-    #      required: true
-      # # azure-tenant-id:
-      # #   description: "Azure Tenant ID"
-      # #   required: true
-      # azure-subscription-id:
-      #   description: "Azure Subscription ID"
-      #   required: true
-# on:
-#   push:
-#     branches: [ "main" ]
-#   pull_request:
-#     branches: [ "main" ]
-#   workflow_dispatch:
-#       inputs:
-#         azure-client-id:
-#           description: "Azure Client ID"
-#           required: true
-#         azure-tenant-id:
-#           description: "Azure Tenant ID"
-#           required: true
-#         azure-subscription-id:
-#           description: "Azure Subscription ID"
-#           required: true
-        # storage-account:
-        #   description: "Storage Account Name"
-        #   required: true
-        # fabric-deployment-hub-url:
-        #   description: "Fabric Deployment Hub URL"
-        #   required: true
-        # workspace-ids:
-        #   description: "Comma-separated list of Workspace IDs"
-        #   required: true
+  workflow_dispatch:
+
 env:
   STORAGE_ACCOUNT: ${{ vars.CODE_STORAGE_ACCOUNT }}
   FABRIC_DEPLOYMENT_HUB_URL: ${{ vars.FABRIC_DEPLOYMENT_HUB_URL }}
   WORKSPACE_IDS: ${{ vars.WORKSPACE_IDS }}
 
 jobs:
-  build:
+  prepare:
     runs-on: self-hosted
-
+    outputs:
+      container_name: ${{ steps.generate_container.outputs.container_name }}
     steps:
-      # Step 1: Check out the repository
-      - name: Check out the code
+      - name: Check out the repository
         uses: actions/checkout@v4
 
-      # # Step 1.1: Ensure Git is installed
-      # - name: Check if Git is installed
-      #   run: |
-      #     if command -v git &> /dev/null; then
-      #       echo "Git is installed."
-      #       git --version
-      #     else
-      #       echo "Git is not installed."
-      #       exit 1
-      #     fi
-      #   shell: bash
-
-      # Step 2: Identify modified folders
-      # - name: Identify relevant folders
-      #   id: relevant_folders
-      #   run: |
-      #     if git rev-parse HEAD^ &> /dev/null; then
-      #       echo "Fetching modified files between HEAD and HEAD^..."
-      #       MODIFIED_FILES=$(git diff --name-only HEAD^ HEAD)
-      #     else
-      #       echo "No previous commit found. Fetching all files in HEAD..."
-      #       MODIFIED_FILES=$(git ls-tree --name-only -r HEAD)
-      #     fi
-      #     echo "Modified files detected:"
-      #     echo "$MODIFIED_FILES"
-          
-      #     # Filter files by extensions and extract folders
-      #     RELEVANT_FOLDERS=$(echo "$MODIFIED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | cut -d'/' -f1 | sort | uniq)
-      #     echo "Relevant folders detected:"
-      #     echo "$RELEVANT_FOLDERS"
-      #     echo "folders=$RELEVANT_FOLDERS" >> $GITHUB_ENV
-      #   shell: bash
-
-      # Step 3: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure using Managed Identity
         run: |
-          az login --identity 
+          az login --identity
         shell: bash
 
-      # Step 4: Create a blob container with a GUID
-      - name: Generate container name
-        id: container
+      - name: Generate Container Name
+        id: generate_container
         run: |
           GENERATED_CONTAINER=$(cat /proc/sys/kernel/random/uuid)
-          echo "Generated container name: $GENERATED_CONTAINER"
-          echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
+          echo "::set-output name=container_name::$GENERATED_CONTAINER"
         shell: bash
-      # Step 5: Upload repository to shared storage
+
       - name: Upload repository to shared storage
         run: |
           az storage container create \
             --account-name "${{ env.STORAGE_ACCOUNT }}" \
-            --name "$container_name" \
+            --name "${{ steps.generate_container.outputs.container_name }}" \
             --auth-mode login
-      
+
           az storage blob upload-batch \
             --account-name "${{ env.STORAGE_ACCOUNT }}" \
-            --destination "$container_name" \
+            --destination "${{ steps.generate_container.outputs.container_name }}" \
             --source "$GITHUB_WORKSPACE" \
             --auth-mode login
-        env:
-          container_name: ${{ env.container_name }}
+        shell: bash
 
-      # Step 6: Call the deployment API
-      - name: Call Deployment API
+  plan:
+    needs: prepare
+    runs-on: self-hosted
+    steps:
+      - name: Call Deployment API (Plan Phase)
         run: |
           curl -X POST "https://${{ env.FABRIC_DEPLOYMENT_HUB_URL }}/api/Planner/tenant-deployment-plan" \
             -H "Content-Type: application/json" \
             -d '{
-              "workspaceIds": ["4aca0508-e966-40a7-a2a2-84861b281c83","3dc6d3ea-f6c5-41c6-b9f7-dbdadccfd76e"],
-              "repoContainer": "8aff1b19-4d31-4586-8ff7-6b9aee2f5c9f",
+              "workspaceIds": ["4aca0508-e966-40a7-a2a2-84861b281c83", "3dc6d3ea-f6c5-41c6-b9f7-dbdadccfd76e"],
+              "repoContainer": "${{ needs.prepare.outputs.container_name }}",
               "modifiedFolders": ["Notebook 2.Notebook"],
-              "savePlan" : true
+              "savePlan": true
             }'
+        shell: bash
+
+  validate:
+    needs: plan
+    runs-on: self-hosted
+    steps:
+      - name: Validate Deployment Plan
+        run: |
+          echo "Validation logic here. Use the plan details from the 'plan' phase if needed."
+        shell: bash
+
+  apply:
+    needs: validate
+    runs-on: self-hosted
+    steps:
+      - name: Apply Deployment Plan
+        run: |
+          echo "Apply logic here. Finalize the deployment."
+        shell: bash
