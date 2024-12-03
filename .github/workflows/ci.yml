@@ -98,19 +98,35 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Call Deployment API
+        env:
+          FABRIC_DEPLOYMENT_HUB_URL: ${{ env.FABRIC_DEPLOYMENT_HUB_URL }}
+          container_name: ${{ needs.prep.outputs.container_name }}
+          folders: ${{ needs.prep.outputs.folders }}
         run: |
-          curl -X POST "https://${{ env.FABRIC_DEPLOYMENT_HUB_URL }}/api/Planner/tenant-deployment-plan" \
+          echo "Container name from prep job: $container_name"
+          echo "Folders from prep job: $folders"
+
+          # Construct the JSON payload
+          JSON_PAYLOAD=$(jq -n \
+            --argjson workspaceIds "[\"4aca0508-e966-40a7-a2a2-84861b281c83\", \"3dc6d3ea-f6c5-41c6-b9f7-dbdadccfd76e\"]" \
+            --arg repoContainer "$container_name" \
+            --argjson modifiedFolders "$(echo "$folders" | tr ',' '\n' | jq -R . | jq -s .)" \
+            --arg savePlan "true" \
+            '{
+              workspaceIds: $workspaceIds,
+              repoContainer: $repoContainer,
+              modifiedFolders: $modifiedFolders,
+              savePlan: ($savePlan | test("true"))
+            }')
+
+          echo "JSON Payload:"
+          echo "$JSON_PAYLOAD"
+
+          # Make the API call
+          curl -X POST "https://$FABRIC_DEPLOYMENT_HUB_URL/api/Planner/tenant-deployment-plan" \
             -H "Content-Type: application/json" \
-            -d "$(jq -n --argjson workspaceIds "[\"4aca0508-e966-40a7-a2a2-84861b281c83\", \"3dc6d3ea-f6c5-41c6-b9f7-dbdadccfd76e\"]" \
-                    --arg repoContainer "$container_name" \
-                    --argjson modifiedFolders "$(printf '%s\n' "$folders" | jq -R . | jq -s .)" \
-                    --arg savePlan "true" \
-                    '{
-                      workspaceIds: $workspaceIds,
-                      repoContainer: $repoContainer,
-                      modifiedFolders: $modifiedFolders,
-                      savePlan: ($savePlan | test("true"))
-                    }')"
+            -d "$JSON_PAYLOAD"
+        shell: bash
   validate:
     needs: plan
     runs-on: self-hosted
