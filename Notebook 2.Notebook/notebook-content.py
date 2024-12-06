@@ -23,7 +23,9 @@
 # CELL ********************
 
 #parameter section
-param_replace = 100
+row_num = {{parameter_row_num}}
+concurrency = {{setting_concurrency}}
+storage_account = {{secret_storage_account}}
 
 # METADATA ********************
 
