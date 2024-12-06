@@ -23,7 +23,10 @@
 # CELL ********************
 
 #parameter section
-param_replace = 100
+# {{git_message}}
+row_num = {{parameter_row_num}}
+concurrency = {{setting_concurrency}}
+storage_account = {{secret_storage_account}}
 
 # METADATA ********************
 
