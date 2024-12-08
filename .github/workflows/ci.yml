@@ -19,11 +19,9 @@ jobs:
       container_name: ${{ steps.container.outputs.container_name }}
       folders: ${{ steps.changed_folders.outputs.folders }}
     steps:
-      # Step 1: Check out the repository
       - name: Check out the code
         uses: actions/checkout@v4
 
-      # Step 2: Identify changed folders
       - name: Identify changed folders
         id: changed_folders
         run: |
@@ -44,34 +42,26 @@ jobs:
           echo "Changed files detected:"
           echo "$CHANGED_FILES"
 
-          # Filter files to exclude `.env` and extract folders
           CHANGED_FOLDERS=$(echo "$CHANGED_FILES" | grep -E '\.(py|platform|ipynb|json)$' | grep -v '\.env' | cut -d'/' -f1 | sort | uniq)
           echo "Changed folders detected:"
           echo "$CHANGED_FOLDERS"
 
-          # Save folders as an environment variable
           echo "folders=$(echo "$CHANGED_FOLDERS" | awk -v ORS=',' '{print $0}' | sed 's/,$//')" >> $GITHUB_OUTPUT
-          # echo "folders=$(echo "$CHANGED_FOLDERS" | awk -v ORS=',' '{print $0}' | sed 's/,$//')" >> $GITHUB_ENV
         shell: bash
 
-      # Step 3: Authenticate with Azure using Managed Identity
       - name: Authenticate with Azure using Managed Identity
         run: |
-          az login --identity 
+          az login --identity
         shell: bash
 
-      # Step 4: Generate a blob container name
       - name: Generate container name
         id: container
         run: |
           GENERATED_CONTAINER=$(cat /proc/sys/kernel/random/uuid)
           echo "Generated container name: $GENERATED_CONTAINER"
-          # Save container name as an environment variable
           echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_OUTPUT
-          # echo "container_name=$GENERATED_CONTAINER" >> $GITHUB_ENV
         shell: bash
 
-      # Step 5: Copy changed folders to blob
       - name: Upload changed folders to blob
         run: |
           echo "Container name: ${{ steps.container.outputs.container_name }}"
@@ -81,7 +71,6 @@ jobs:
             --name "${{ steps.container.outputs.container_name }}" \
             --auth-mode login
 
-          # Process folders with proper quoting
           IFS=',' read -r -a FOLDER_ARRAY <<< "${{ steps.changed_folders.outputs.folders }}"
           for folder in "${FOLDER_ARRAY[@]}"; do
             echo "Copying folder: $folder"
@@ -96,8 +85,12 @@ jobs:
     name: Plan Phase
     needs: prep
     runs-on: self-hosted
+    outputs:
+      plan_file_name: ${{ steps.plan.outputs.plan_file_name }}
+      container_name: ${{ steps.plan.outputs.container_name }}
     steps:
-      - name: Call Deployment API
+      - name: Construct JSON payload and call Deployment API
+        id: plan
         env:
           FABRIC_DEPLOYMENT_HUB_URL: ${{ env.FABRIC_DEPLOYMENT_HUB_URL }}
           container_name: ${{ needs.prep.outputs.container_name }}
@@ -106,34 +99,65 @@ jobs:
           echo "Container name from prep job: $container_name"
           echo "Folders from prep job: $folders"
 
-          # Construct the JSON payload
           JSON_PAYLOAD=$(jq -n \
-            --argjson workspaceIds "[\"4aca0508-e966-40a7-a2a2-84861b281c83\", \"3dc6d3ea-f6c5-41c6-b9f7-dbdadccfd76e\"]" \
             --arg repoContainer "$container_name" \
             --argjson modifiedFolders "$(echo "$folders" | tr ',' '\n' | jq -R . | jq -s .)" \
             --arg savePlan "true" \
             '{
-              workspaceIds: $workspaceIds,
-              repoContainer: $repoContainer,
-              modifiedFolders: $modifiedFolders,
-              savePlan: ($savePlan | test("true"))
+                repoContainer: $repoContainer,
+                modifiedFolders: $modifiedFolders,
+                savePlan: ($savePlan | test("true"))
             }')
 
           echo "JSON Payload:"
           echo "$JSON_PAYLOAD"
 
-          # Make the API call
-          curl -X POST "https://$FABRIC_DEPLOYMENT_HUB_URL/api/Planner/tenant-deployment-plan" \
+          RESPONSE=$(curl -s -X POST "https://$FABRIC_DEPLOYMENT_HUB_URL/api/Planner/tenant-deployment-plan" \
             -H "Content-Type: application/json" \
-            -d "$JSON_PAYLOAD"
+            -d "$JSON_PAYLOAD")
+
+          echo "Planner response: $RESPONSE"
+
+          PLAN_FILE_NAME=$(echo "$RESPONSE" | jq -r '.planFileName')
+          CONTAINER=$(echo "$RESPONSE" | jq -r '.container')
+
+          echo "plan_file_name=$PLAN_FILE_NAME" >> $GITHUB_OUTPUT
+          echo "container_name=$CONTAINER" >> $GITHUB_OUTPUT
         shell: bash
+
   validate:
     needs: plan
     runs-on: self-hosted
+    outputs:
+      validated_plan_file_name: ${{ steps.validate.outputs.validated_plan_file_name }}
+      container: ${{ steps.validate.outputs.container }}
     steps:
       - name: Validate Deployment Plan
+        id: validate
+        env:
+          FABRIC_DEPLOYMENT_HUB_URL: ${{ env.FABRIC_DEPLOYMENT_HUB_URL }}
+          plan_file_name: ${{ needs.plan.outputs.plan_file_name }}
+          container_name: ${{ needs.plan.outputs.container_name }}
         run: |
-          echo "Validation logic here. Use the plan details from the 'plan' phase if needed."
+          JSON_PAYLOAD=$(jq -n \
+            --arg planFile "$plan_file_name" \
+            --arg repoContainer "$container_name" \
+            '{
+              PlanFile: $planFile,
+              RepoContainer: $repoContainer
+            }')
+
+          RESPONSE=$(curl -s -X POST "https://$FABRIC_DEPLOYMENT_HUB_URL/api/Validation/validate-plan" \
+            -H "Content-Type: application/json" \
+            -d "$JSON_PAYLOAD")
+
+          echo "Validation response: $RESPONSE"
+
+          VALIDATED_PLAN_FILE_NAME=$(echo "$RESPONSE" | jq -r '.validatedPlanFileName')
+          CONTAINER=$(echo "$RESPONSE" | jq -r '.container')
+
+          echo "validated_plan_file_name=$VALIDATED_PLAN_FILE_NAME" >> $GITHUB_OUTPUT
+          echo "container=$CONTAINER" >> $GITHUB_OUTPUT
         shell: bash
 
   apply:
@@ -141,6 +165,25 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Apply Deployment Plan
+        env:
+          FABRIC_DEPLOYMENT_HUB_URL: ${{ env.FABRIC_DEPLOYMENT_HUB_URL }}
+          validated_plan_file_name: ${{ needs.validate.outputs.validated_plan_file_name }}
+          container_name: ${{ needs.validate.outputs.container }}
         run: |
-          echo "Apply logic here. Finalize the deployment."
+          JSON_PAYLOAD=$(jq -n \
+            --arg planFile "$validated_plan_file_name" \
+            --arg repoContainer "$container_name" \
+            '{
+              PlanFile: $planFile,
+              RepoContainer: $repoContainer
+            }')
+
+          echo "Apply JSON Payload:"
+          echo "$JSON_PAYLOAD"
+
+          RESPONSE=$(curl -s -X POST "https://$FABRIC_DEPLOYMENT_HUB_URL/api/Deployments/deploy-plan" \
+            -H "Content-Type: application/json" \
+            -d "$JSON_PAYLOAD")
+
+          echo "Apply response: $RESPONSE"
         shell: bash
