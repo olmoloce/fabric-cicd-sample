@@ -35,6 +35,53 @@ storage_account = {{secret_storage_account}}
 # META   "language_group": "synapse_pyspark"
 # META }
 
+# MARKDOWN ********************
+
+
+# MARKDOWN ********************
+
+# #### Read Account key secret from Key Vault and Mount the ADLS Container
+
+# CELL ********************
+
+# Replace with your Key Vault name and secret name
+key_vault_name = "ydeu2aml6491325893"
+secret_name = "storage-ak-secret"
+kv_uri = f"https://{key_vault_name}.vault.azure.net"
+
+# Retrieve the ADLS account key
+accountKey = mssparkutils.credentials.getSecret(kv_uri, secret_name)
+
+# mounting the olmoloce-test container as mount point olga-test
+notebookutils.fs.mount(  
+    "abfss://olmoloce-test@fabcodestore.dfs.core.windows.net",  
+    "/olga-test",  
+    {"accountKey":accountKey}
+)
+
+
+
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+#File read
+with open(notebookutils.fs.getMountPath('/olga-test') + "/root/fabric-test.txt", "r") as f:
+    print(f.read())
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
 
 #load the NYC Taxi dataset 
