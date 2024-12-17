@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "Notebook X",
+    "description": "A notebook which was created via REST description"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "61cbee25-8070-4a36-938d-20ac363d06f8"
+  }
+}
