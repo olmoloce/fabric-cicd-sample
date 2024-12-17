@@ -23,10 +23,10 @@
 # CELL ********************
 
 #parameter section
-# {{git_message}}
-row_num = {{parameter_row_num}}
-concurrency = {{setting_concurrency}}
-storage_account = {{secret_storage_account}}
+# _git_message
+row_num = _parameter_row_num
+concurrency = _setting_concurrency
+storage_account = _secret_storage_account
 
 # METADATA ********************
 
@@ -51,6 +51,7 @@ kv_uri = f"https://{key_vault_name}.vault.azure.net"
 
 # Retrieve the ADLS account key
 accountKey = mssparkutils.credentials.getSecret(kv_uri, secret_name)
+print(accountKey)
 
 # mounting the olmoloce-test container as mount point olga-test
 notebookutils.fs.mount(  
