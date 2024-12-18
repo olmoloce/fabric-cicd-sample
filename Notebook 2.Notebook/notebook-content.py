@@ -45,7 +45,7 @@ storage_account = {{secret_storage_account}}
 nyc_df = spark.read.parquet("abfss://4aca0508-e966-40a7-a2a2-84861b281c83@onelake.dfs.fabric.microsoft.com/2201502c-735a-4855-8bfd-8e448f913c90/Files/NYC-Taxi-Green/")
 
 #display top 100
-display(nyc_df.limit(param_replace))
+display(nyc_df.limit(row_num))
 
 
 # METADATA ********************
