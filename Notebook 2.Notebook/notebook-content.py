@@ -16,6 +16,10 @@
 # META           "id": "2201502c-735a-4855-8bfd-8e448f913c90"
 # META         }
 # META       ]
+# META     },
+# META     "environment": {
+# META       "environmentId": "86b2682d-aaff-4b81-bbc7-8f76340b229b",
+# META       "workspaceId": "00000000-0000-0000-0000-000000000000"
 # META     }
 # META   }
 # META }
@@ -81,6 +85,17 @@ vendor_counts.show()
 # CELL ********************
 
 nyc_df.printSchema()
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+%run Notebook 2XX
 
 # METADATA ********************
 
